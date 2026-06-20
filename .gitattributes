@@ -8,3 +8,7 @@ install_gui.py linguist-vendored
 seed_extensions.py linguist-vendored
 test_runner.py linguist-vendored
 interpreter/* linguist-vendored
+
+# Exclude shell helper scripts from language statistics
+install.sh linguist-vendored
+create_appimage.sh linguist-vendored
