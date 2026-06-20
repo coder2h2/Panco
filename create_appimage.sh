@@ -39,20 +39,15 @@ Terminal=true
 Categories=Development;
 EOF
 
-# 4. Copy and convert Panco Logo to PNG format
-LOGO_SRC="/home/ip-ascii/.gemini/antigravity-cli/brain/59d4b6d5-0019-4b9c-bd18-befab5812de0/panco_logo_1781991923899.jpg"
+# 4. Generate a blank/invisible transparent icon for AppImage compliance (no logo)
 python3 -c "
-import shutil
-src = '$LOGO_SRC'
-dest = '$APPDIR/delta.png'
 try:
     from PIL import Image
-    img = Image.open(src)
-    img.save(dest)
-    print('✔ Logo converted successfully to PNG')
-except ImportError:
-    shutil.copy(src, dest)
-    print('✔ Logo copied to target (Pillow not installed)')
+    img = Image.new('RGBA', (32, 32), (0, 0, 0, 0))
+    img.save('$APPDIR/delta.png')
+    print('✔ Generated transparent fallback icon')
+except Exception as e:
+    print('Error generating fallback icon:', e)
 "
 
 # 5. Download appimagetool
