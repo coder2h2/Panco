@@ -231,61 +231,147 @@ class Interpreter:
         define_builtin("sin", 1, lambda interp, args, tok: math.sin(args[0]) if isinstance(args[0], (int, float)) else exec("raise PancoRuntimeError('sin expects a number', interp.filepath, tok.line, tok.column, tok.length, interp.source)"))
         define_builtin("cos", 1, lambda interp, args, tok: math.cos(args[0]) if isinstance(args[0], (int, float)) else exec("raise PancoRuntimeError('cos expects a number', interp.filepath, tok.line, tok.column, tok.length, interp.source)"))
 
-        # Graphical GUI Helpers (Tkinter integration)
+        # Graphical GUI Helpers (Custom Terminal TUI integration)
         def bi_gui_window(interpreter, args, token):
-            import tkinter as tk
-            root = tk.Tk()
-            root.title(args[0])
-            return root
+            return {"title": args[0], "widgets": [], "selected_idx": 0}
         define_builtin("gui_window", 1, bi_gui_window)
 
         def bi_gui_label(interpreter, args, token):
-            import tkinter as tk
             window = args[0]
-            text = args[1]
-            label = tk.Label(window, text=text)
-            label.pack(pady=10)
-            return label
+            widget = {"type": "label", "text": args[1]}
+            window["widgets"].append(widget)
+            return widget
         define_builtin("gui_label", 2, bi_gui_label)
 
         def bi_gui_button(interpreter, args, token):
-            import tkinter as tk
             window = args[0]
-            text = args[1]
-            callback_name = args[2]
-            
-            def on_click():
-                try:
-                    val = interpreter.environment.get(callback_name, token, interpreter.filepath, interpreter.source)
-                    if isinstance(val, PancoCallable):
-                        val.call(interpreter, [], token)
-                    elif callable(val):
-                        val()
-                except PancoRuntimeError as e:
-                    import sys
-                    print(e, file=sys.stderr)
-                    
-            button = tk.Button(window, text=text, command=on_click)
-            button.pack(pady=10)
-            return button
+            widget = {"type": "button", "text": args[1], "callback_name": args[2]}
+            window["widgets"].append(widget)
+            return widget
         define_builtin("gui_button", 3, bi_gui_button)
 
         def bi_gui_entry(interpreter, args, token):
-            import tkinter as tk
             window = args[0]
-            entry = tk.Entry(window)
-            entry.pack(pady=10)
-            return entry
+            widget = {"type": "entry", "text": ""}
+            window["widgets"].append(widget)
+            return widget
         define_builtin("gui_entry", 1, bi_gui_entry)
 
         def bi_gui_get_text(interpreter, args, token):
-            entry = args[0]
-            return entry.get()
+            widget = args[0]
+            return widget.get("text", "")
         define_builtin("gui_get_text", 1, bi_gui_get_text)
 
         def bi_gui_main_loop(interpreter, args, token):
+            import sys
+            import tty
+            import termios
+            import time
+            
             window = args[0]
-            window.mainloop()
+            widgets = window["widgets"]
+            
+            def getch():
+                fd = sys.stdin.fileno()
+                old_settings = termios.tcgetattr(fd)
+                try:
+                    tty.setraw(sys.stdin.fileno())
+                    ch = sys.stdin.read(1)
+                    if ch == '\x1b': # Escape sequence
+                        ch2 = sys.stdin.read(1)
+                        if ch2 == '[':
+                            ch3 = sys.stdin.read(1)
+                            return '\x1b' + ch2 + ch3
+                        return '\x1b' + ch2
+                finally:
+                    termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+                return ch
+                
+            def draw(selected_idx):
+                # Clear screen
+                sys.stdout.write("\033[H\033[J")
+                
+                interactive_widgets = [w for w in widgets if w["type"] in ("button", "entry")]
+                
+                # Draw window frame
+                width = 60
+                print("┌" + "─" * (width - 2) + "┐")
+                
+                # Title
+                title = window["title"]
+                title_padded = title.center(width - 2)
+                print("│" + title_padded + "│")
+                print("├" + "─" * (width - 2) + "┤")
+                print("│" + " " * (width - 2) + "│")
+                
+                # Draw widgets
+                for widget in widgets:
+                    if widget["type"] == "label":
+                        text = widget["text"].center(width - 2)
+                        print("│" + text + "│")
+                    elif widget["type"] == "button":
+                        is_sel = len(interactive_widgets) > selected_idx and interactive_widgets[selected_idx] is widget
+                        btn_text = f"[ {widget['text']} ]"
+                        if is_sel:
+                            btn_text = f"▶ {widget['text']} ◀"
+                        btn_padded = btn_text.center(width - 2)
+                        print("│" + btn_padded + "│")
+                    elif widget["type"] == "entry":
+                        is_sel = len(interactive_widgets) > selected_idx and interactive_widgets[selected_idx] is widget
+                        val = widget["text"]
+                        entry_text = f"Input: {val}_" if is_sel else f"Input: {val}"
+                        entry_padded = entry_text.center(width - 2)
+                        print("│" + entry_padded + "│")
+                    print("│" + " " * (width - 2) + "│")
+                    
+                print("└" + "─" * (width - 2) + "┘")
+                print("\n(Use Arrow Keys/Tab to navigate, Enter to select, 'q' or Esc to exit)")
+                sys.stdout.flush()
+
+            selected_idx = 0
+            while True:
+                interactive_widgets = [w for w in widgets if w["type"] in ("button", "entry")]
+                draw(selected_idx)
+                
+                try:
+                    ch = getch()
+                except Exception:
+                    break
+                    
+                if ch in ('q', 'Q', '\x1b'): # Esc or q
+                    break
+                    
+                # Arrow up or left
+                if ch == '\x1b[A' or ch == '\x1b[D':
+                    if interactive_widgets:
+                        selected_idx = (selected_idx - 1) % len(interactive_widgets)
+                # Arrow down or right or Tab
+                elif ch == '\x1b[B' or ch == '\x1b[C' or ch == '\t':
+                    if interactive_widgets:
+                        selected_idx = (selected_idx + 1) % len(interactive_widgets)
+                # Enter
+                elif ch == '\r' or ch == '\n':
+                    if len(interactive_widgets) > selected_idx:
+                        active_widget = interactive_widgets[selected_idx]
+                        if active_widget["type"] == "button":
+                            callback_name = active_widget["callback_name"]
+                            try:
+                                val = interpreter.environment.get(callback_name, token, interpreter.filepath, interpreter.source)
+                                if isinstance(val, PancoCallable):
+                                    val.call(interpreter, [], token)
+                                elif callable(val):
+                                    val()
+                            except Exception as e:
+                                print(f"\nError in callback: {e}")
+                                time.sleep(2)
+                        elif active_widget["type"] == "entry":
+                            print("\nType input value and press Enter: ", end="")
+                            sys.stdout.flush()
+                            try:
+                                new_val = sys.stdin.readline().strip()
+                                active_widget["text"] = new_val
+                            except KeyboardInterrupt:
+                                pass
             return None
         define_builtin("gui_main_loop", 1, bi_gui_main_loop)
 
