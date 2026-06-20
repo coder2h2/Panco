@@ -732,13 +732,20 @@ class Interpreter:
                 return base[index]
             except IndexError:
                 raise PancoRuntimeError("List index out of range.", self.filepath, node.token.line, node.token.column, node.token.length, self.source)
+        elif isinstance(base, str):
+            if not isinstance(index, int):
+                raise PancoRuntimeError("String index must be an integer.", self.filepath, node.token.line, node.token.column, node.token.length, self.source)
+            try:
+                return base[index]
+            except IndexError:
+                raise PancoRuntimeError("String index out of range.", self.filepath, node.token.line, node.token.column, node.token.length, self.source)
         elif isinstance(base, dict):
             if isinstance(index, (list, dict)):
                 raise PancoRuntimeError("Dictionary key must be hashable.", self.filepath, node.token.line, node.token.column, node.token.length, self.source)
             # Return nil if not found, Javascript style
             return base.get(index, None)
         else:
-            raise PancoRuntimeError("Can only index lists or dictionaries.", self.filepath, node.token.line, node.token.column, node.token.length, self.source)
+            raise PancoRuntimeError("Can only index lists, strings, or dictionaries.", self.filepath, node.token.line, node.token.column, node.token.length, self.source)
 
     # --- Helpers for Execution ---
 
