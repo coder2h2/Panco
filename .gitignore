@@ -15,6 +15,9 @@ pip-wheel-metadata/
 delta.AppDir/
 build_appimage/
 delta.AppImage
+build/
+dist/
+*.spec
 
 # Logs & temp test files
 delta/logs/

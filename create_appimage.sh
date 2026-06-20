@@ -11,11 +11,15 @@ rm -rf "$APPDIR" "$BUILD_DIR"
 mkdir -p "$APPDIR/usr/bin"
 mkdir -p "$BUILD_DIR"
 
-# 1. Copy script and interpreter source code
-cp -rf "$PROJECT_DIR/panco.py" "$APPDIR/usr/bin/panco.py"
-cp -rf "$PROJECT_DIR/install_gui.py" "$APPDIR/usr/bin/install_gui.py"
-cp -rf "$PROJECT_DIR/interpreter" "$APPDIR/usr/bin/"
-chmod +x "$APPDIR/usr/bin/panco.py"
+# 1. Build and copy standalone compiled binary
+if [ ! -f "$PROJECT_DIR/dist/delta" ]; then
+    echo "Compiling standalone delta binary using pyinstaller..."
+    python3 -m venv "$PROJECT_DIR/venv"
+    "$PROJECT_DIR/venv/bin/pip" install pyinstaller
+    "$PROJECT_DIR/venv/bin/pyinstaller" --onefile --name delta "$PROJECT_DIR/panco.py"
+fi
+cp -rf "$PROJECT_DIR/dist/delta" "$APPDIR/usr/bin/delta"
+chmod +x "$APPDIR/usr/bin/delta"
 
 # 2. Create entrypoint AppRun script
 cat << 'EOF' > "$APPDIR/AppRun"
@@ -23,8 +27,8 @@ cat << 'EOF' > "$APPDIR/AppRun"
 SELF=$(readlink -f "$0")
 HERE=$(dirname "$SELF")
 
-# Run the python interpreter targeting the bundled script
-exec python3 "$HERE/usr/bin/panco.py" "$@"
+# Run the compiled standalone binary directly
+exec "$HERE/usr/bin/delta" "$@"
 EOF
 chmod +x "$APPDIR/AppRun"
 
