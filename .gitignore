@@ -20,3 +20,4 @@ delta.AppImage
 delta/logs/
 temp_test.db
 test_init/
+custom.db
