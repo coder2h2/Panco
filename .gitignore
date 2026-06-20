@@ -1,0 +1,22 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.venv
+pip-wheel-metadata/
+.pytest_cache/
+
+# AppImage and Build Files
+delta.AppDir/
+build_appimage/
+delta.AppImage
+
+# Logs & temp test files
+delta/logs/
+temp_test.db
+test_init/

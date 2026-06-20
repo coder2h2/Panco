@@ -1,0 +1,135 @@
+[db}database/panco.db]
+[deltafolder}PROJECT/delta]
+[.deltalog}/delta/logs/.deltalog]
+
+# ==========================================
+#                  PANCO
+# ==========================================
+# File: Project.delta
+# Created by 'delta init'
+
+# 1. Variables and Types
+makeword("[1] Variables & Dynamic Types")
+[allow}message\"Hello, Panco world!"]
+[allow}version\1.0]
+[allow}is_active\true]
+[allow}empty_val\nil]
+
+makeword("  message: {message} ({type(message)})")
+makeword("  version: {version} ({type(version)})")
+makeword("  is_active: {is_active} ({type(is_active)})")
+makeword("  empty_val: {empty_val} ({type(empty_val)})\n")
+
+
+# 2. Transforming Functions ('delta')
+makeword("[2] Transforming Functions ('delta')")
+
+delta double(n) {
+    return n * 2
+}
+
+delta square(n) {
+    return n * n
+}
+
+delta add(a, b) {
+    return a + b
+}
+
+[allow}num\5]
+makeword("  Double of {num} is: {double(num)}")
+makeword("  Square of {num} is: {square(num)}")
+makeword("  Add(10, 20) is: {add(10, 20)}\n")
+
+
+# 3. Pipelines (the '->' operator passes the LHS as the first argument to the RHS)
+makeword("[3] The Pipeline Operator ('->')")
+
+# 5 -> double -> square evaluates to square(double(5))
+[allow}pipeline_result\5 -> double -> square]
+makeword("  5 -> double -> square = {pipeline_result}") # should be 100
+
+# Pipeline works with multi-argument functions too!
+[allow}math_pipe\10 -> add(5) -> double]
+makeword("  10 -> add(5) -> double = {math_pipe}\n") # should be 30
+
+
+# 4. Control Flow (if, while, and list iteration)
+makeword("[4] Control Flow & Loops")
+
+[allow}test_val\42]
+if (test_val > 50) {
+    makeword("  {test_val} is greater than 50")
+} else if (test_val == 42) {
+    makeword("  {test_val} is the Answer to Life, the Universe, and Everything!")
+} else {
+    makeword("  {test_val} is small")
+}
+
+# Fibonacci sequence using a while loop
+makeword("  Fibonacci sequence (iterative):")
+[allow}first\0]
+[allow}second\1]
+[allow}count\0]
+while (count < 8) {
+    makeword("    Fib({count}): {first}")
+    [allow}temp\first + second]
+    first = second
+    second = temp
+    count = count + 1
+}
+
+# Recursion check
+delta fib_recursive(n) {
+    if (n <= 1) {
+        return n
+    }
+    return fib_recursive(n - 1) + fib_recursive(n - 2)
+}
+makeword("  Fibonacci (recursive check): Fib(8) = {fib_recursive(8)}\n")
+
+
+# 5. Lists and Dictionaries
+makeword("[5] Data Structures: Lists & Dictionaries")
+
+[allow}fruits\["Apple", "Banana", "Cherry"]]
+makeword("  Original list: {fruits}")
+makeword("  Length of list: {len(fruits)}")
+
+# Add a fruit using built-in push
+fruits -> push("Date")
+makeword("  After push: {fruits}")
+
+# Loop over the list using a 'for' loop
+makeword("  Iterating fruits:")
+for fruit in fruits {
+    makeword("    - {fruit}")
+}
+
+# Create a dictionary
+[allow}user\{"name": "Panco Developer", "role": "Designer", "languages": ["Panco", "Python"]}]
+makeword("  User Dict: {user}")
+makeword("  User name: {user[\"name\"]}")
+makeword("  User languages: {user[\"languages\"]}")
+
+# Update dictionaries
+user["role"] = "Software Architect"
+makeword("  User role updated: {user[\"role\"]}\n")
+
+
+# 6. Extension Imports (SQLite database storage)
+makeword("[6] Database Extension Imports")
+
+# import# imports from default db
+import# math_ext
+makeword("  Imported math_ext from default db:")
+makeword("    double_val(15) -> {double_val(15)}")
+makeword("    triple_val(15) -> {triple_val(15)}")
+
+# from DATABASE.db import EXTENSION
+from custom.db import utils_ext
+makeword("  Imported utils_ext from custom.db:")
+makeword("    {greet(\"Developer\")}")
+makeword("")
+
+makeword("\nPanco execution completed successfully!")
