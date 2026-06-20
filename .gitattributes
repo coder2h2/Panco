@@ -1,0 +1,3 @@
+# Override GitHub Linguist language detection to prevent misclassification of .pan as the "Pan" configuration language
+*.pan linguist-language=Python
+*.delta linguist-language=Python
