@@ -13,6 +13,7 @@ mkdir -p "$BUILD_DIR"
 
 # 1. Copy script and interpreter source code
 cp -rf "$PROJECT_DIR/panco.py" "$APPDIR/usr/bin/panco.py"
+cp -rf "$PROJECT_DIR/install_gui.py" "$APPDIR/usr/bin/install_gui.py"
 cp -rf "$PROJECT_DIR/interpreter" "$APPDIR/usr/bin/"
 chmod +x "$APPDIR/usr/bin/panco.py"
 

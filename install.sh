@@ -37,11 +37,13 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [ -n "$USE_SUDO" ]; then
     sudo cp -rf "$SCRIPT_DIR/panco.py" "$PANCO_DIR/panco.py"
+    sudo cp -rf "$SCRIPT_DIR/install_gui.py" "$PANCO_DIR/install_gui.py"
     sudo cp -rf "$SCRIPT_DIR/interpreter" "$PANCO_DIR/"
     sudo chmod +x "$PANCO_DIR/panco.py"
     sudo ln -sf "$PANCO_DIR/panco.py" "$BIN_DIR/delta"
 else
     cp -rf "$SCRIPT_DIR/panco.py" "$PANCO_DIR/panco.py"
+    cp -rf "$SCRIPT_DIR/install_gui.py" "$PANCO_DIR/install_gui.py"
     cp -rf "$SCRIPT_DIR/interpreter" "$PANCO_DIR/"
     chmod +x "$PANCO_DIR/panco.py"
     ln -sf "$PANCO_DIR/panco.py" "$BIN_DIR/delta"

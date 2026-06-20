@@ -231,6 +231,64 @@ class Interpreter:
         define_builtin("sin", 1, lambda interp, args, tok: math.sin(args[0]) if isinstance(args[0], (int, float)) else exec("raise PancoRuntimeError('sin expects a number', interp.filepath, tok.line, tok.column, tok.length, interp.source)"))
         define_builtin("cos", 1, lambda interp, args, tok: math.cos(args[0]) if isinstance(args[0], (int, float)) else exec("raise PancoRuntimeError('cos expects a number', interp.filepath, tok.line, tok.column, tok.length, interp.source)"))
 
+        # Graphical GUI Helpers (Tkinter integration)
+        def bi_gui_window(interpreter, args, token):
+            import tkinter as tk
+            root = tk.Tk()
+            root.title(args[0])
+            return root
+        define_builtin("gui_window", 1, bi_gui_window)
+
+        def bi_gui_label(interpreter, args, token):
+            import tkinter as tk
+            window = args[0]
+            text = args[1]
+            label = tk.Label(window, text=text)
+            label.pack(pady=10)
+            return label
+        define_builtin("gui_label", 2, bi_gui_label)
+
+        def bi_gui_button(interpreter, args, token):
+            import tkinter as tk
+            window = args[0]
+            text = args[1]
+            callback_name = args[2]
+            
+            def on_click():
+                try:
+                    val = interpreter.environment.get(callback_name, token, interpreter.filepath, interpreter.source)
+                    if isinstance(val, PancoCallable):
+                        val.call(interpreter, [], token)
+                    elif callable(val):
+                        val()
+                except PancoRuntimeError as e:
+                    import sys
+                    print(e, file=sys.stderr)
+                    
+            button = tk.Button(window, text=text, command=on_click)
+            button.pack(pady=10)
+            return button
+        define_builtin("gui_button", 3, bi_gui_button)
+
+        def bi_gui_entry(interpreter, args, token):
+            import tkinter as tk
+            window = args[0]
+            entry = tk.Entry(window)
+            entry.pack(pady=10)
+            return entry
+        define_builtin("gui_entry", 1, bi_gui_entry)
+
+        def bi_gui_get_text(interpreter, args, token):
+            entry = args[0]
+            return entry.get()
+        define_builtin("gui_get_text", 1, bi_gui_get_text)
+
+        def bi_gui_main_loop(interpreter, args, token):
+            window = args[0]
+            window.mainloop()
+            return None
+        define_builtin("gui_main_loop", 1, bi_gui_main_loop)
+
     def interpret(self, program_node):
         try:
             for stmt in program_node.statements:

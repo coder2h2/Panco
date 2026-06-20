@@ -61,6 +61,56 @@ makeword("Panco execution: " + status)
         os.makedirs("PROJECT/delta", exist_ok=True)
         os.makedirs("delta/logs", exist_ok=True)
         
+        # Seed math_ext and graphical extensions in default db
+        import sqlite3
+        conn = sqlite3.connect("database/panco.db")
+        cursor = conn.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS extensions (
+                name TEXT PRIMARY KEY,
+                code TEXT
+            )
+        """)
+        
+        math_code = """
+delta double_val(x) {
+    return x * 2
+}
+
+delta triple_val(x) {
+    return x * 3
+}
+"""
+        graphical_code = """
+delta create_window(title) {
+    return gui_window(title)
+}
+
+delta add_label(win, text) {
+    return gui_label(win, text)
+}
+
+delta add_button(win, text, callback) {
+    return gui_button(win, text, callback)
+}
+
+delta add_input(win) {
+    return gui_entry(win)
+}
+
+delta get_input_value(entry) {
+    return gui_get_text(entry)
+}
+
+delta start_gui(win) {
+    return gui_main_loop(win)
+}
+"""
+        cursor.execute("INSERT OR REPLACE INTO extensions (name, code) VALUES (?, ?)", ("math_ext", math_code))
+        cursor.execute("INSERT OR REPLACE INTO extensions (name, code) VALUES (?, ?)", ("graphical", graphical_code))
+        conn.commit()
+        conn.close()
+        
         print("Panco project initialized successfully!")
         print("Created:")
         print("  - Project.delta")
@@ -177,6 +227,17 @@ def run_repl():
 if __name__ == "__main__":
     if len(sys.argv) == 2 and sys.argv[1] == "init":
         init_project()
+    elif len(sys.argv) == 2 and sys.argv[1] == "install":
+        try:
+            import tkinter as tk
+            from install_gui import PancoInstallerApp
+            root = tk.Tk()
+            app = PancoInstallerApp(root)
+            root.mainloop()
+            sys.exit(0)
+        except Exception as e:
+            print(f"Error launching graphical installer: {str(e)}", file=sys.stderr)
+            sys.exit(1)
     elif len(sys.argv) == 3 and sys.argv[1] == "start":
         run_file(sys.argv[2])
     elif len(sys.argv) == 2:
@@ -187,5 +248,5 @@ if __name__ == "__main__":
     elif len(sys.argv) == 1:
         run_repl()
     else:
-        print("Usage: delta [start|init] [file.pan|file.delta]", file=sys.stderr)
+        print("Usage: delta [start|init|install] [file.pan|file.delta]", file=sys.stderr)
         sys.exit(64) # EX_USAGE

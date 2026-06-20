@@ -31,6 +31,33 @@ delta triple_val(x) {
 """
     seed_db(default_db_path, "math_ext", math_code)
 
+    graphical_code = """
+delta create_window(title) {
+    return gui_window(title)
+}
+
+delta add_label(win, text) {
+    return gui_label(win, text)
+}
+
+delta add_button(win, text, callback) {
+    return gui_button(win, text, callback)
+}
+
+delta add_input(win) {
+    return gui_entry(win)
+}
+
+delta get_input_value(entry) {
+    return gui_get_text(entry)
+}
+
+delta start_gui(win) {
+    return gui_main_loop(win)
+}
+"""
+    seed_db(default_db_path, "graphical", graphical_code)
+
     # Seed a custom db in the workspace
     custom_db_path = "custom.db"
     utils_code = """
