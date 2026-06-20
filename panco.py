@@ -246,5 +246,5 @@ if __name__ == "__main__":
     elif len(sys.argv) == 1:
         run_repl()
     else:
-        print("Usage: delta [start|init|install] [file.pan|file.delta]", file=sys.stderr)
+        print("Usage: delta [start|init|install] [file.pco|file.delta]", file=sys.stderr)
         sys.exit(64) # EX_USAGE

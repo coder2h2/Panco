@@ -1,5 +1,5 @@
 # Override GitHub Linguist language detection to classify files as Panco
-*.pan linguist-language=Panco
+*.pco linguist-language=Panco
 *.delta linguist-language=Panco
 
 # Exclude Python interpreter bootstrapping files from language statistics

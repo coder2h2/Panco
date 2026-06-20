@@ -2,7 +2,7 @@
   "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
   "name": "Panco",
   "scopeName": "source.panco",
-  "fileTypes": ["pan", "delta"],
+  "fileTypes": ["pco", "delta"],
   "patterns": [
     {
       "include": "#comments"
