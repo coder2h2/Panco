@@ -229,11 +229,9 @@ if __name__ == "__main__":
         init_project()
     elif len(sys.argv) == 2 and sys.argv[1] == "install":
         try:
-            import tkinter as tk
-            from install_gui import PancoInstallerApp
-            root = tk.Tk()
-            app = PancoInstallerApp(root)
-            root.mainloop()
+            from install_gui import PancoX11Installer
+            app = PancoX11Installer()
+            app.run()
             sys.exit(0)
         except Exception as e:
             print(f"Error launching graphical installer: {str(e)}", file=sys.stderr)

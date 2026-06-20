@@ -231,28 +231,81 @@ class Interpreter:
         define_builtin("sin", 1, lambda interp, args, tok: math.sin(args[0]) if isinstance(args[0], (int, float)) else exec("raise PancoRuntimeError('sin expects a number', interp.filepath, tok.line, tok.column, tok.length, interp.source)"))
         define_builtin("cos", 1, lambda interp, args, tok: math.cos(args[0]) if isinstance(args[0], (int, float)) else exec("raise PancoRuntimeError('cos expects a number', interp.filepath, tok.line, tok.column, tok.length, interp.source)"))
 
-        # Graphical GUI Helpers (Custom Terminal TUI integration)
+        # Graphical GUI Helpers (Custom Direct X11 integration)
         def bi_gui_window(interpreter, args, token):
-            return {"title": args[0], "widgets": [], "selected_idx": 0}
+            import ctypes
+            try:
+                x11 = ctypes.CDLL("libX11.so.6")
+            except Exception:
+                try:
+                    x11 = ctypes.CDLL("libX11.so")
+                except Exception:
+                    raise PancoRuntimeError("Could not load libX11.so. Graphical extension requires X11 on Linux.", interpreter.filepath, token.line, token.column, token.length, interpreter.source)
+                    
+            x11.XOpenDisplay.restype = ctypes.c_void_p
+            x11.XDefaultRootWindow.restype = ctypes.c_ulong
+            x11.XCreateSimpleWindow.restype = ctypes.c_ulong
+            
+            display = x11.XOpenDisplay(None)
+            if not display:
+                raise PancoRuntimeError("Could not open X11 display. Ensure DISPLAY env variable is set.", interpreter.filepath, token.line, token.column, token.length, interpreter.source)
+                
+            root = x11.XDefaultRootWindow(display)
+            # Create a simple window (400x300, white background 0xFFFFFF)
+            window = x11.XCreateSimpleWindow(display, root, 100, 100, 400, 300, 1, 0, 0xFFFFFF)
+            
+            # Change window title
+            x11.XStoreName(display, window, args[0].encode("utf-8"))
+            
+            # Select events: ExposureMask (1<<15), ButtonPressMask (1<<2), KeyPressMask (1<<0)
+            x11.XSelectInput(display, window, (1<<15) | (1<<2) | (1<<0))
+            x11.XMapWindow(display, window)
+            
+            gc = x11.XCreateGC(display, window, 0, None)
+            
+            return {
+                "x11": x11,
+                "display": display,
+                "window": window,
+                "gc": gc,
+                "widgets": []
+            }
         define_builtin("gui_window", 1, bi_gui_window)
 
         def bi_gui_label(interpreter, args, token):
             window = args[0]
-            widget = {"type": "label", "text": args[1]}
+            widget = {"type": "label", "text": args[1], "y": 50 + len(window["widgets"]) * 45}
             window["widgets"].append(widget)
             return widget
         define_builtin("gui_label", 2, bi_gui_label)
 
         def bi_gui_button(interpreter, args, token):
             window = args[0]
-            widget = {"type": "button", "text": args[1], "callback_name": args[2]}
+            y = 50 + len(window["widgets"]) * 45
+            widget = {
+                "type": "button",
+                "text": args[1],
+                "callback_name": args[2],
+                "x": 80,
+                "y": y,
+                "w": 240,
+                "h": 32
+            }
             window["widgets"].append(widget)
             return widget
         define_builtin("gui_button", 3, bi_gui_button)
 
         def bi_gui_entry(interpreter, args, token):
             window = args[0]
-            widget = {"type": "entry", "text": ""}
+            y = 50 + len(window["widgets"]) * 45
+            widget = {
+                "type": "entry",
+                "text": "",
+                "x": 80,
+                "y": y,
+                "w": 240,
+                "h": 32
+            }
             window["widgets"].append(widget)
             return widget
         define_builtin("gui_entry", 1, bi_gui_entry)
@@ -263,115 +316,124 @@ class Interpreter:
         define_builtin("gui_get_text", 1, bi_gui_get_text)
 
         def bi_gui_main_loop(interpreter, args, token):
-            import sys
-            import tty
-            import termios
-            import time
+            import ctypes
             
             window = args[0]
+            x11 = window["x11"]
+            display = window["display"]
+            win_id = window["window"]
+            gc = window["gc"]
             widgets = window["widgets"]
             
-            def getch():
-                fd = sys.stdin.fileno()
-                old_settings = termios.tcgetattr(fd)
-                try:
-                    tty.setraw(sys.stdin.fileno())
-                    ch = sys.stdin.read(1)
-                    if ch == '\x1b': # Escape sequence
-                        ch2 = sys.stdin.read(1)
-                        if ch2 == '[':
-                            ch3 = sys.stdin.read(1)
-                            return '\x1b' + ch2 + ch3
-                        return '\x1b' + ch2
-                finally:
-                    termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-                return ch
+            class XEvent(ctypes.Structure):
+                _fields_ = [("type", ctypes.c_int), ("pad", ctypes.c_byte * 188)]
                 
-            def draw(selected_idx):
-                # Clear screen
-                sys.stdout.write("\033[H\033[J")
+            class XButtonEvent(ctypes.Structure):
+                _fields_ = [
+                    ("type", ctypes.c_int),
+                    ("serial", ctypes.c_ulong),
+                    ("send_event", ctypes.c_int),
+                    ("display", ctypes.c_void_p),
+                    ("window", ctypes.c_ulong),
+                    ("root", ctypes.c_ulong),
+                    ("subwindow", ctypes.c_ulong),
+                    ("time", ctypes.c_ulong),
+                    ("x", ctypes.c_int),
+                    ("y", ctypes.c_int),
+                ]
                 
-                interactive_widgets = [w for w in widgets if w["type"] in ("button", "entry")]
+            class XKeyEvent(ctypes.Structure):
+                _fields_ = [
+                    ("type", ctypes.c_int),
+                    ("serial", ctypes.c_ulong),
+                    ("send_event", ctypes.c_int),
+                    ("display", ctypes.c_void_p),
+                    ("window", ctypes.c_ulong),
+                    ("root", ctypes.c_ulong),
+                    ("subwindow", ctypes.c_ulong),
+                    ("time", ctypes.c_ulong),
+                    ("x", ctypes.c_int),
+                    ("y", ctypes.c_int),
+                    ("x_root", ctypes.c_int),
+                    ("y_root", ctypes.c_int),
+                    ("state", ctypes.c_uint),
+                    ("keycode", ctypes.c_uint),
+                ]
+
+            event = XEvent()
+            
+            def draw_window():
+                # Clear background (white rectangle)
+                x11.XSetForeground(display, gc, 0xFFFFFF)
+                x11.XFillRectangle(display, win_id, gc, 0, 0, 400, 300)
                 
-                # Draw window frame
-                width = 60
-                print("┌" + "─" * (width - 2) + "┐")
+                # Set drawing color to black
+                x11.XSetForeground(display, gc, 0x000000)
                 
-                # Title
-                title = window["title"]
-                title_padded = title.center(width - 2)
-                print("│" + title_padded + "│")
-                print("├" + "─" * (width - 2) + "┤")
-                print("│" + " " * (width - 2) + "│")
-                
-                # Draw widgets
                 for widget in widgets:
                     if widget["type"] == "label":
-                        text = widget["text"].center(width - 2)
-                        print("│" + text + "│")
+                        text_bytes = widget["text"].encode("utf-8")
+                        x11.XDrawString(display, win_id, gc, 80, widget["y"] + 20, text_bytes, len(text_bytes))
                     elif widget["type"] == "button":
-                        is_sel = len(interactive_widgets) > selected_idx and interactive_widgets[selected_idx] is widget
-                        btn_text = f"[ {widget['text']} ]"
-                        if is_sel:
-                            btn_text = f"▶ {widget['text']} ◀"
-                        btn_padded = btn_text.center(width - 2)
-                        print("│" + btn_padded + "│")
+                        # Border
+                        x11.XDrawRectangle(display, win_id, gc, widget["x"], widget["y"], widget["w"], widget["h"])
+                        # Text
+                        text_bytes = widget["text"].encode("utf-8")
+                        x11.XDrawString(display, win_id, gc, widget["x"] + 20, widget["y"] + 20, text_bytes, len(text_bytes))
                     elif widget["type"] == "entry":
-                        is_sel = len(interactive_widgets) > selected_idx and interactive_widgets[selected_idx] is widget
-                        val = widget["text"]
-                        entry_text = f"Input: {val}_" if is_sel else f"Input: {val}"
-                        entry_padded = entry_text.center(width - 2)
-                        print("│" + entry_padded + "│")
-                    print("│" + " " * (width - 2) + "│")
-                    
-                print("└" + "─" * (width - 2) + "┘")
-                print("\n(Use Arrow Keys/Tab to navigate, Enter to select, 'q' or Esc to exit)")
-                sys.stdout.flush()
+                        # Border
+                        x11.XDrawRectangle(display, win_id, gc, widget["x"], widget["y"], widget["w"], widget["h"])
+                        # Text
+                        val = widget["text"] + ("_" if active_entry is widget else "")
+                        text_bytes = val.encode("utf-8")
+                        x11.XDrawString(display, win_id, gc, widget["x"] + 10, widget["y"] + 20, text_bytes, len(text_bytes))
+                x11.XFlush(display)
 
-            selected_idx = 0
+            active_entry = None
+            
+            # Flush initial display mapping
+            x11.XFlush(display)
+            
             while True:
-                interactive_widgets = [w for w in widgets if w["type"] in ("button", "entry")]
-                draw(selected_idx)
+                x11.XNextEvent(display, ctypes.byref(event))
                 
-                try:
-                    ch = getch()
-                except Exception:
-                    break
-                    
-                if ch in ('q', 'Q', '\x1b'): # Esc or q
-                    break
-                    
-                # Arrow up or left
-                if ch == '\x1b[A' or ch == '\x1b[D':
-                    if interactive_widgets:
-                        selected_idx = (selected_idx - 1) % len(interactive_widgets)
-                # Arrow down or right or Tab
-                elif ch == '\x1b[B' or ch == '\x1b[C' or ch == '\t':
-                    if interactive_widgets:
-                        selected_idx = (selected_idx + 1) % len(interactive_widgets)
-                # Enter
-                elif ch == '\r' or ch == '\n':
-                    if len(interactive_widgets) > selected_idx:
-                        active_widget = interactive_widgets[selected_idx]
-                        if active_widget["type"] == "button":
-                            callback_name = active_widget["callback_name"]
-                            try:
-                                val = interpreter.environment.get(callback_name, token, interpreter.filepath, interpreter.source)
-                                if isinstance(val, PancoCallable):
-                                    val.call(interpreter, [], token)
-                                elif callable(val):
-                                    val()
-                            except Exception as e:
-                                print(f"\nError in callback: {e}")
-                                time.sleep(2)
-                        elif active_widget["type"] == "entry":
-                            print("\nType input value and press Enter: ", end="")
-                            sys.stdout.flush()
-                            try:
-                                new_val = sys.stdin.readline().strip()
-                                active_widget["text"] = new_val
-                            except KeyboardInterrupt:
-                                pass
+                if event.type == 12: # Expose
+                    draw_window()
+                elif event.type == 4: # ButtonPress
+                    click = ctypes.cast(ctypes.byref(event), ctypes.POINTER(XButtonEvent)).contents
+                    active_entry = None
+                    for widget in widgets:
+                        if widget["type"] == "button":
+                            if widget["x"] <= click.x <= widget["x"] + widget["w"] and widget["y"] <= click.y <= widget["y"] + widget["h"]:
+                                callback_name = widget["callback_name"]
+                                try:
+                                    val = interpreter.environment.get(callback_name, token, interpreter.filepath, interpreter.source)
+                                    if isinstance(val, PancoCallable):
+                                        val.call(interpreter, [], token)
+                                    elif callable(val):
+                                        val()
+                                except Exception as e:
+                                    print(f"Error in callback: {e}")
+                                draw_window()
+                        elif widget["type"] == "entry":
+                            if widget["x"] <= click.x <= widget["x"] + widget["w"] and widget["y"] <= click.y <= widget["y"] + widget["h"]:
+                                active_entry = widget
+                                draw_window()
+                elif event.type == 2: # KeyPress
+                    key = ctypes.cast(ctypes.byref(event), ctypes.POINTER(XKeyEvent)).contents
+                    buf = (ctypes.c_char * 8)()
+                    keysym = ctypes.c_ulong()
+                    res = x11.XLookupString(ctypes.byref(key), buf, 8, ctypes.byref(keysym), None)
+                    if res > 0:
+                        char = buf.value.decode("utf-8", errors="ignore")
+                        if active_entry:
+                            if ord(char) in (8, 127): # Backspace
+                                active_entry["text"] = active_entry["text"][:-1]
+                            elif char in ("\r", "\n"): # Enter
+                                active_entry = None
+                            else:
+                                active_entry["text"] += char
+                            draw_window()
             return None
         define_builtin("gui_main_loop", 1, bi_gui_main_loop)
 
