@@ -90,7 +90,8 @@ class Interpreter:
             self.script_dir = os.getcwd()
 
         # Setup logging configurations
-        self.log_path = self.directives.get(".deltalog")
+        log_path = self.directives.get(".deltalog")
+        self.log_path = os.path.expanduser(log_path) if log_path else None
         self.fallback_logged_warning = False
 
         # Resolve paths for db and deltafolder
@@ -125,6 +126,7 @@ class Interpreter:
     def resolve_path(self, path):
         if not path:
             return path
+        path = os.path.expanduser(path)
         if os.path.isabs(path):
             return path
         return os.path.abspath(os.path.join(self.script_dir, path))

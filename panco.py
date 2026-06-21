@@ -39,9 +39,9 @@ def init_project():
         print(f"Error: '{project_file}' already exists in this directory.", file=sys.stderr)
         sys.exit(1)
         
-    template = r"""[db}database/panco.db]
-[deltafolder}PROJECT/delta]
-[.deltalog}/delta/logs/.deltalog]
+    template = r"""[db}~/.panco/database/panco.db]
+[deltafolder}~/.panco/PROJECT/delta]
+[.deltalog}~/.panco/delta/logs/.deltalog]
 
 # ==========================================
 #                  PANCO
@@ -57,13 +57,17 @@ makeword("Panco execution: " + status)
         with open(project_file, "w", encoding="utf-8") as f:
             f.write(template)
             
-        os.makedirs("database", exist_ok=True)
-        os.makedirs("PROJECT/delta", exist_ok=True)
-        os.makedirs("delta/logs", exist_ok=True)
+        db_path = os.path.expanduser("~/.panco/database/panco.db")
+        delta_dir = os.path.expanduser("~/.panco/PROJECT/delta")
+        logs_dir = os.path.expanduser("~/.panco/delta/logs")
+
+        os.makedirs(os.path.dirname(db_path), exist_ok=True)
+        os.makedirs(delta_dir, exist_ok=True)
+        os.makedirs(logs_dir, exist_ok=True)
         
         # Seed math_ext and graphical extensions in default db
         import sqlite3
-        conn = sqlite3.connect("database/panco.db")
+        conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS extensions (
@@ -114,9 +118,9 @@ delta start_gui(win) {
         print("Panco project initialized successfully!")
         print("Created:")
         print("  - Project.delta")
-        print("  - database/")
-        print("  - PROJECT/delta/")
-        print("  - delta/logs/")
+        print("  - ~/.panco/database/ (containing extensions)")
+        print("  - ~/.panco/PROJECT/delta/")
+        print("  - ~/.panco/delta/logs/")
         print("\nTo run your project, type: delta start Project.delta")
     except Exception as e:
         print(f"Error: Failed to initialize project: {str(e)}", file=sys.stderr)
