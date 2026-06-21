@@ -2,7 +2,7 @@
 set -e
 
 # Default to user-level install
-PANCO_DIR="$HOME/.panco"
+PANCO_DIR="$HOME/.pco"
 BIN_DIR="$HOME/.local/bin"
 USE_SUDO=""
 

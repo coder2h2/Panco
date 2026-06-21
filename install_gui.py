@@ -39,7 +39,7 @@ class PancoX11Installer:
         self.status = "Ready to install."
 
         # Setup buttons
-        self.btn_local = {"text": "Install User-Local (~/.panco)", "x": 80, "y": 100, "w": 290, "h": 40}
+        self.btn_local = {"text": "Install User-Local (~/.pco)", "x": 80, "y": 100, "w": 290, "h": 40}
         self.btn_global = {"text": "Install System-Wide (/opt/panco)", "x": 80, "y": 160, "w": 290, "h": 40}
 
     def draw(self):
@@ -110,7 +110,7 @@ class PancoX11Installer:
         self.status = "Installing user-local..."
         self.draw()
         
-        panco_dir = os.path.expanduser("~/.panco")
+        panco_dir = os.path.expanduser("~/.pco")
         bin_dir = os.path.expanduser("~/.local/bin")
         
         try:

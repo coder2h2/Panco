@@ -39,9 +39,9 @@ def init_project():
         print(f"Error: '{project_file}' already exists in this directory.", file=sys.stderr)
         sys.exit(1)
         
-    template = r"""[db}~/.panco/database/panco.db]
-[deltafolder}~/.panco/PROJECT/delta]
-[.deltalog}~/.panco/delta/logs/.deltalog]
+    template = r"""[db}~/.pco/database/panco.db]
+[deltafolder}~/.pco/PROJECT/delta]
+[.deltalog}~/.pco/delta/logs/.deltalog]
 
 # ==========================================
 #                  PANCO
@@ -57,9 +57,9 @@ makeword("Panco execution: " + status)
         with open(project_file, "w", encoding="utf-8") as f:
             f.write(template)
             
-        db_path = os.path.expanduser("~/.panco/database/panco.db")
-        delta_dir = os.path.expanduser("~/.panco/PROJECT/delta")
-        logs_dir = os.path.expanduser("~/.panco/delta/logs")
+        db_path = os.path.expanduser("~/.pco/database/panco.db")
+        delta_dir = os.path.expanduser("~/.pco/PROJECT/delta")
+        logs_dir = os.path.expanduser("~/.pco/delta/logs")
 
         os.makedirs(os.path.dirname(db_path), exist_ok=True)
         os.makedirs(delta_dir, exist_ok=True)
@@ -118,9 +118,9 @@ delta start_gui(win) {
         print("Panco project initialized successfully!")
         print("Created:")
         print("  - Project.delta")
-        print("  - ~/.panco/database/ (containing extensions)")
-        print("  - ~/.panco/PROJECT/delta/")
-        print("  - ~/.panco/delta/logs/")
+        print("  - ~/.pco/database/ (containing extensions)")
+        print("  - ~/.pco/PROJECT/delta/")
+        print("  - ~/.pco/delta/logs/")
         print("\nTo run your project, type: delta start Project.delta")
     except Exception as e:
         print(f"Error: Failed to initialize project: {str(e)}", file=sys.stderr)
