@@ -244,9 +244,13 @@ if __name__ == "__main__":
         run_file(sys.argv[2])
     elif len(sys.argv) == 2:
         if sys.argv[1] == "start":
-            print("Error: Please specify a file to start (e.g., 'delta start Project.delta')", file=sys.stderr)
-            sys.exit(64)
-        run_file(sys.argv[1])
+            if os.path.exists("Project.delta"):
+                run_file("Project.delta")
+            else:
+                print("Error: No 'Project.delta' found in the current directory. Please specify a file to start (e.g., 'delta start Project.delta')", file=sys.stderr)
+                sys.exit(64)
+        else:
+            run_file(sys.argv[1])
     elif len(sys.argv) == 1:
         run_repl()
     else:
