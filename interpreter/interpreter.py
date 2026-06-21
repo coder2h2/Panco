@@ -82,6 +82,10 @@ class Interpreter:
         self.directives = directives if directives is not None else {}
         self.globals = Environment()
         self.environment = self.globals
+        self.debug_mode = False
+        self.debug_step = True
+        self.debug_breakpoints = set()
+        self.is_evaluating_expression = False
         
         # Determine the directory of the script file to resolve relative paths
         if self.filepath and self.filepath not in ("<string>", "<repl>"):
@@ -441,6 +445,8 @@ class Interpreter:
 
     def interpret(self, program_node):
         try:
+            if getattr(self, "debug_mode", False):
+                print("[DEBUG] Starting debugger for Panco. Type 'help' or 'h' for a list of commands.")
             for stmt in program_node.statements:
                 self.execute(stmt)
             self.log_message("Execution completed successfully.")
@@ -449,12 +455,120 @@ class Interpreter:
             raise e
 
     def execute(self, stmt):
+        if getattr(self, "debug_mode", False) and stmt.token and not getattr(self, "is_evaluating_expression", False):
+            from interpreter.ast_nodes import BlockNode, ProgramNode
+            if not isinstance(stmt, (BlockNode, ProgramNode)):
+                self.debug_prompt(stmt)
         method_name = f"visit_{type(stmt).__name__}"
         visitor = getattr(self, method_name, self.generic_visit)
         return visitor(stmt)
 
+    def debug_prompt(self, stmt):
+        line_num = stmt.token.line if stmt.token else 0
+        should_pause = False
+        if getattr(self, "debug_step", True):
+            should_pause = True
+        elif line_num in getattr(self, "debug_breakpoints", set()):
+            should_pause = True
+            print(f"\n[DEBUG] Breakpoint hit at line {line_num}")
+            
+        if not should_pause:
+            return
+            
+        lines = self.source.splitlines()
+        current_code = lines[line_num - 1].strip() if 0 < line_num <= len(lines) else ""
+        print(f"\n[DEBUG] Line {line_num}: {current_code}")
+        
+        while True:
+            try:
+                cmd = input("debug> ").strip()
+            except (KeyboardInterrupt, EOFError):
+                print("\nTerminating execution.")
+                sys.exit(0)
+                
+            if not cmd:
+                cmd = "step"
+                
+            parts = cmd.split(None, 1)
+            action = parts[0].lower()
+            
+            if action in ("s", "step", "n", "next"):
+                self.debug_step = True
+                break
+            elif action in ("c", "continue"):
+                self.debug_step = False
+                break
+            elif action in ("p", "print", "e", "eval"):
+                if len(parts) < 2:
+                    print("Usage: print <variable_name>  or  eval <expression>")
+                    continue
+                expr_str = parts[1]
+                try:
+                    from interpreter.lexer import Lexer
+                    from interpreter.parser import Parser
+                    lexer = Lexer(expr_str, filepath="<debug>")
+                    tokens = lexer.scan_tokens()
+                    parser = Parser(tokens, expr_str, filepath="<debug>")
+                    expr_ast = parser.expression()
+                    
+                    val = self.evaluate(expr_ast)
+                    print(self.stringify_repr(val))
+                except Exception as e:
+                    print(f"Error evaluating: {e}")
+            elif action in ("l", "list"):
+                start = max(1, line_num - 5)
+                end = min(len(lines), line_num + 5)
+                for idx in range(start, end + 1):
+                    prefix = "-> " if idx == line_num else "   "
+                    print(f"{prefix}{idx:3d}: {lines[idx-1]}")
+            elif action in ("b", "breakpoint"):
+                if len(parts) < 2:
+                    print(f"Active breakpoints: {sorted(list(getattr(self, 'debug_breakpoints', set())))}")
+                    print("Usage: breakpoint <line_number>")
+                    continue
+                try:
+                    bp_line = int(parts[1])
+                    if not hasattr(self, "debug_breakpoints"):
+                        self.debug_breakpoints = set()
+                    self.debug_breakpoints.add(bp_line)
+                    print(f"Set breakpoint at line {bp_line}")
+                except ValueError:
+                    print("Error: Breakpoint line must be an integer.")
+            elif action in ("d", "delete"):
+                if len(parts) < 2:
+                    print("Usage: delete <line_number>")
+                    continue
+                try:
+                    bp_line = int(parts[1])
+                    if hasattr(self, "debug_breakpoints") and bp_line in self.debug_breakpoints:
+                        self.debug_breakpoints.remove(bp_line)
+                        print(f"Removed breakpoint at line {bp_line}")
+                    else:
+                        print(f"No breakpoint at line {bp_line}")
+                except ValueError:
+                    print("Error: Breakpoint line must be an integer.")
+            elif action in ("h", "help", "?"):
+                print("Debugger commands:")
+                print("  s, step, n, next      Step to next statement")
+                print("  c, continue           Continue execution until next breakpoint")
+                print("  p, print, e, eval <x> Evaluate expression/print variable value")
+                print("  l, list               List surrounding source code")
+                print("  b, breakpoint <line>  Set a breakpoint at a line number")
+                print("  d, delete <line>      Remove a breakpoint")
+                print("  q, quit, exit         Quit/terminate execution")
+            elif action in ("q", "quit", "exit"):
+                print("Terminating execution.")
+                sys.exit(0)
+            else:
+                print(f"Unknown command: '{action}'. Type 'help' for available commands.")
+
     def evaluate(self, expr):
-        return self.execute(expr)
+        prev = getattr(self, "is_evaluating_expression", False)
+        self.is_evaluating_expression = True
+        try:
+            return self.execute(expr)
+        finally:
+            self.is_evaluating_expression = prev
 
     def generic_visit(self, node):
         raise Exception(f"No visit_{type(node).__name__} method defined.")

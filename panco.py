@@ -153,6 +153,34 @@ def run_file(filepath):
         interpreter.log_message(f"Execution failed: {str(e)}", level="ERROR")
         sys.exit(65 if "Syntax" in type(e).__name__ else 70)
 
+def run_file_debug(filepath):
+    if not os.path.exists(filepath):
+        print(f"Error: File '{filepath}' not found.", file=sys.stderr)
+        sys.exit(1)
+
+    with open(filepath, "r", encoding="utf-8") as f:
+        source_code = f.read()
+
+    directives, cleaned_source = parse_directives(source_code)
+    interpreter = Interpreter(cleaned_source, filepath=filepath, directives=directives)
+    interpreter.debug_mode = True
+    
+    # Log starting of execution
+    interpreter.log_message("Debug execution started.")
+
+    try:
+        lexer = Lexer(cleaned_source, filepath=filepath)
+        tokens = lexer.scan_tokens()
+
+        parser = Parser(tokens, cleaned_source, filepath=filepath)
+        program_ast = parser.parse()
+
+        interpreter.interpret(program_ast)
+    except PancoError as e:
+        print(e, file=sys.stderr)
+        interpreter.log_message(f"Debug execution failed: {str(e)}", level="ERROR")
+        sys.exit(65 if "Syntax" in type(e).__name__ else 70)
+
 def run_repl():
     if BANNER:
         print(BANNER)
@@ -242,6 +270,8 @@ if __name__ == "__main__":
             sys.exit(1)
     elif len(sys.argv) == 3 and sys.argv[1] == "start":
         run_file(sys.argv[2])
+    elif len(sys.argv) == 3 and sys.argv[1] == "debug":
+        run_file_debug(sys.argv[2])
     elif len(sys.argv) == 2:
         if sys.argv[1] == "start":
             if os.path.exists("Project.delta"):
@@ -249,10 +279,16 @@ if __name__ == "__main__":
             else:
                 print("Error: No 'Project.delta' found in the current directory. Please specify a file to start (e.g., 'delta start Project.delta')", file=sys.stderr)
                 sys.exit(64)
+        elif sys.argv[1] == "debug":
+            if os.path.exists("Project.delta"):
+                run_file_debug("Project.delta")
+            else:
+                print("Error: No 'Project.delta' found in the current directory. Please specify a file to debug.", file=sys.stderr)
+                sys.exit(64)
         else:
             run_file(sys.argv[1])
     elif len(sys.argv) == 1:
         run_repl()
     else:
-        print("Usage: delta [start|init|install] [file.pco|file.delta]", file=sys.stderr)
+        print("Usage: delta [start|init|install|debug] [file.pco|file.delta]", file=sys.stderr)
         sys.exit(64) # EX_USAGE

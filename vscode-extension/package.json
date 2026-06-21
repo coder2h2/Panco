@@ -1,0 +1,48 @@
+{
+  "name": "panco-colorizer",
+  "displayName": "Panco Language Support",
+  "description": "Syntax highlighting and debugger support for the Panco language",
+  "version": "1.0.0",
+  "publisher": "coder2h2",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "main": "./extension.js",
+  "activationEvents": [
+    "onDebug"
+  ],
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "panco",
+        "aliases": ["Panco", "panco"],
+        "extensions": [".pco", ".delta"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "panco",
+        "scopeName": "source.panco",
+        "path": "./syntaxes/panco.tmLanguage.json"
+      }
+    ],
+    "debuggers": [
+      {
+        "type": "panco",
+        "label": "Panco Debugger",
+        "initialConfigurations": [
+          {
+            "type": "panco",
+            "request": "launch",
+            "name": "Panco: Debug Current File",
+            "program": "${file}"
+          }
+        ]
+      }
+    ]
+  }
+}
